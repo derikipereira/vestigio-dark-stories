@@ -47,6 +47,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Vestigio custom colors
+        mystery: {
+          red: "hsl(var(--mystery-red))",
+          gold: "hsl(var(--mystery-gold))",
+          shadow: "hsl(var(--mystery-shadow))",
+          glow: "hsl(var(--mystery-glow))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -80,10 +87,42 @@ export default {
             height: "0",
           },
         },
+        "mystery-glow": {
+          "0%, 100%": {
+            opacity: "0.5",
+            transform: "scale(1)",
+          },
+          "50%": {
+            opacity: "0.8",
+            transform: "scale(1.05)",
+          },
+        },
+        "fade-in": {
+          from: {
+            opacity: "0",
+            transform: "translateY(10px)",
+          },
+          to: {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "mystery-glow": "mystery-glow 3s ease-in-out infinite",
+        "fade-in": "fade-in 0.6s ease-out",
+      },
+      backgroundImage: {
+        "gradient-mystery": "var(--gradient-mystery)",
+        "gradient-card": "var(--gradient-card)",
+        "gradient-blood": "var(--gradient-blood)",
+      },
+      boxShadow: {
+        "mystery": "var(--shadow-mystery)",
+        "glow": "var(--shadow-glow)",
+        "blood": "var(--shadow-blood)",
       },
     },
   },

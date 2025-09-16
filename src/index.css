@@ -2,39 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Vestigio - Design system for dark mystery game interface */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Dark mystery theme */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 0 72% 45%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 0 72% 45%;
+
+    /* Custom Vestigio design tokens */
+    --mystery-red: 0 72% 45%;
+    --mystery-gold: 45 100% 55%;
+    --mystery-shadow: 0 0% 5%;
+    --mystery-glow: 0 72% 25%;
+
+    /* Gradients */
+    --gradient-mystery: linear-gradient(135deg, hsl(var(--background)), hsl(0 0% 12%));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(0 0% 10%));
+    --gradient-blood: linear-gradient(135deg, hsl(0 72% 45%), hsl(0 85% 35%));
+
+    /* Shadows and effects */
+    --shadow-mystery: 0 10px 30px -10px hsl(var(--mystery-shadow));
+    --shadow-glow: 0 0 20px hsl(var(--mystery-glow) / 0.3);
+    --shadow-blood: 0 0 30px hsl(var(--mystery-red) / 0.2);
+
+    /* Animations */
+    --transition-mystery: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     --radius: 0.5rem;
 
