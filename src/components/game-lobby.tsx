@@ -1,117 +1,93 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Users, Play, Eye, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Eye, Settings } from "lucide-react";
+import { Story } from "@/lib/types"; // Make sure your types are defined
 
 interface GameLobbyProps {
-  onStartGame: () => void;
-  onJoinAsMaster: () => void;
-  onJoinAsDetective: () => void;
+  roomCode: string;
+  isCreating: boolean;
+  onRoomCodeChange: (code: string) => void;
+  onJoinGame: () => void;
+  onOpenCreateModal: () => void;
 }
 
-export function GameLobby({ onStartGame, onJoinAsMaster, onJoinAsDetective }: GameLobbyProps) {
+export function GameLobby({
+  roomCode,
+  isCreating,
+  onRoomCodeChange,
+  onJoinGame,
+  onOpenCreateModal,
+}: GameLobbyProps) {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="text-center mb-8 animate-fade-in">
+    <div className="container mx-auto px-4 py-8 max-w-4xl animate-fade-in">
+      <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-mystery-red mb-4 animate-mystery-glow">
           🔍 Vestigio
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Desvende mistérios intrigantes através de perguntas estratégicas. 
-          Um jogo de dedução social onde cada resposta é uma pista para a verdade.
+          Desvende mistérios intrigantes através de perguntas estratégicas. Um jogo de dedução social onde cada resposta é uma pista para a verdade.
         </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Card for Creating a Game (Master) */}
         <Card className="bg-gradient-card border-border/50 shadow-mystery hover:shadow-glow transition-all duration-500">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-mystery-red">
               <Settings className="h-5 w-5" />
-              Mestre do Enigma
+              Criar Jogo (Ser Mestre)
             </CardTitle>
             <CardDescription>
-              Conduza o mistério, possua a solução e responda às perguntas dos detetives.
+              Escolha uma história e convide seus amigos para desvendar o mistério.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm text-muted-foreground space-y-2 mb-4">
-              <li>• Leia a história enigmática</li>
-              <li>• Conheça a solução completa</li>
-              <li>• Responda apenas "sim", "não" ou "irrelevante"</li>
-            </ul>
-            <Button 
-              onClick={onJoinAsMaster}
+            {/* Logic to select a story would go here */}
+            <p className="text-sm text-muted-foreground mb-4">Selecione uma história da lista (a ser implementada) ou use a padrão.</p>
+            <Button
+              onClick={onOpenCreateModal}
+              disabled={isCreating}
               className="w-full bg-mystery-red hover:bg-mystery-red/80 shadow-blood"
             >
-              Ser Mestre
+              {isCreating ? "Criando sala..." : "Criar Sala como Mestre"}
             </Button>
           </CardContent>
         </Card>
 
+        {/* Card for Joining a Game (Detective) */}
         <Card className="bg-gradient-card border-border/50 shadow-mystery hover:shadow-glow transition-all duration-500">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-mystery-gold">
               <Eye className="h-5 w-5" />
-              Detetive
+              Entrar em um Jogo (Ser Detetive)
             </CardTitle>
             <CardDescription>
               Use sua intuição e lógica para desvendar o mistério através de perguntas.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm text-muted-foreground space-y-2 mb-4">
-              <li>• Faça perguntas estratégicas</li>
-              <li>• Colabore com outros detetives</li>
-              <li>• Deduza a solução completa</li>
-            </ul>
-            <Button 
-              onClick={onJoinAsDetective}
-              variant="secondary"
-              className="w-full"
-            >
-              Ser Detetive
-            </Button>
+            <Label htmlFor="room-code-input" className="text-sm font-medium mb-2 block">Código da Sala</Label>
+            <div className="flex w-full items-center space-x-2">
+              <Input
+                id="room-code-input"
+                type="text"
+                placeholder="Ex: XYZ123"
+                value={roomCode}
+                onChange={(e) => onRoomCodeChange(e.target.value)}
+                className="uppercase"
+              />
+              <Button onClick={onJoinGame} variant="secondary">
+                Entrar na Sala
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Peça o código da sala para o Mestre do Enigma.
+            </p>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="bg-gradient-card border-mystery-gold/30 shadow-mystery">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Como Jogar
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-3 gap-4 text-sm">
-            <div className="text-center">
-              <Badge variant="outline" className="mb-2">Passo 1</Badge>
-              <p className="text-muted-foreground">
-                O Mestre lê uma história enigmática para os detetives
-              </p>
-            </div>
-            <div className="text-center">
-              <Badge variant="outline" className="mb-2">Passo 2</Badge>
-              <p className="text-muted-foreground">
-                Os detetives fazem perguntas que só podem ser respondidas com "sim", "não" ou "irrelevante"
-              </p>
-            </div>
-            <div className="text-center">
-              <Badge variant="outline" className="mb-2">Passo 3</Badge>
-              <p className="text-muted-foreground">
-                Através das respostas, os detetives reconstroem a história completa
-              </p>
-            </div>
-          </div>
-          
-          <div className="text-center pt-4">
-            <Button onClick={onStartGame} size="lg" className="bg-mystery-red hover:bg-mystery-red/80 shadow-blood">
-              <Play className="h-4 w-4 mr-2" />
-              Iniciar Jogo
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
