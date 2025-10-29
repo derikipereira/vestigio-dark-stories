@@ -4,71 +4,46 @@ export type Genre = 'CRIME' | 'SOBRENATURAL' | 'COTIDIANO' | 'BIZARRO' | 'FUTURI
 
 export type StoryStatus = 'PENDENTE' | 'APROVADA' | 'REJEITADA';
 
-export type GameStatus = 
-  | 'WAITING_FOR_PLAYERS' 
-  | 'WAITING_FOR_STORY_SELECTION' 
-  | 'IN_PROGRESS' 
-  | 'FINISHED';
+export type GameStatus =
+  | 'WAITING_FOR_PLAYERS'
+  | 'WAITING_FOR_STORY_SELECTION'
+  | 'IN_PROGRESS'
+  | 'COMPLETED';
 
 export type AnswerType = 'SIM' | 'NAO' | 'IRRELEVANTE';
 
 export interface User {
-  id: number;
-  name: string;
-  email: string;
+    id: number;
+    name: string;
+    email?: string;
 }
 
 export interface Player {
-  id: number;
-  username: string;
+    id: number;
+    name: string;
+    host?: boolean;
 }
-
 
 export interface Story {
-  id: number;
-  title: string;
-  enigmaticSituation: string;
-  fullSolution: string;
-  genre: Genre;
-  difficulty: Difficulty;
-  creatorName: string;
+    id: number;
+    title: string;
+    description?: string;
+    status?: StoryStatus;
 }
-
-export interface StoryResponseDTO extends Story {
-  status: StoryStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface GameSessionResponseDTO {
-  id: number;
-  roomCode: string;
-    status: GameStatus;
-    story: Story;
-    master: Player;
-    players: Player[];
-    moves: Move[];
-    createdAt: string;
-}
-
 
 export interface Move {
-  id: number;
-  question: string;
-  answer: AnswerType | null;
-  author: Player;
-  timestamp: string;
+    id: number;
+    text?: string;
+    questionText?: string;
+    player?: Player;
+    answer?: AnswerType;
 }
 
-
 export interface GameSession {
-  id: number;
-  roomCode: string;
-  status: GameStatus;
-  story: Story | null;
-  storyOptions?: Story[];
-  master: Player;
-  players: Player[];
-  moves: Move[];
-  createdAt: string;
+    id: number;
+    code: string;
+    status: GameStatus;
+    players?: Player[];
+    stories?: Story[];
+    moves?: Move[];
 }

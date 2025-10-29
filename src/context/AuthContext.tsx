@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const fetchUser = useCallback(async () => {
                 if (axios.defaults.headers.common['Authorization']) {
                         try {
-                                const response = await axios.get<User>(`${API_BASE_URL}/api/player/users/me`);
+                                const response = await axios.get<User>(`${API_BASE_URL}/api/v1/users/me`);
                                 setUser(response.data);
                         } catch (error) {
                                 console.error("Token inválido ou sessão expirada. Fazendo logout.");
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const login = async (email: string, password: string): Promise<boolean> => {
                 try {
-                        const response = await axios.post<{ token: string }>(`${API_BASE_URL}/api/auth/authenticate`, { email, password });
+                        const response = await axios.post<{ token: string }>(`${API_BASE_URL}/api/v1/auth/authenticate`, { email, password });
                         const newToken = response.data.token;
                         localStorage.setItem('jwt_token', newToken);
                         setToken(newToken);
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         const register = async (name: string, email: string, password: string): Promise<boolean> => {
                 try {
-                        const response = await axios.post<{ token: string }>(`${API_BASE_URL}/api/auth/register`, { name, email, password });
+                        const response = await axios.post<{ token: string }>(`${API_BASE_URL}/api/v1/auth/register`, { name, email, password });
                         const newToken = response.data.token;
                         localStorage.setItem('jwt_token', newToken);
                         setToken(newToken);

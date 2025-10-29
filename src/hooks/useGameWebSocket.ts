@@ -1,62 +1,111 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { GameSession, AnswerType } from '@/lib/types';
+import { useAuth } from '../context/AuthContext';
+import type { GameSession, AnswerType } from '../lib/types';
 
-export const useGameWebSocket = (roomCode: string | undefined, token: string | null) => {
+export const useGameWebSocket = (roomCode?: string) => {
+    const { token } = useAuth();
     const [gameSession, setGameSession] = useState<GameSession | null>(null);
-    const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const stompClientRef = useRef<Client | null>(null);
+    const stompRef = useRef<Client | null>(null);
+    const subRef = useRef<any>(null);
 
     useEffect(() => {
         if (!roomCode || !token) return;
 
         const client = new Client({
             webSocketFactory: () => new SockJS('/ws'),
-            connectHeaders: { Authorization: `Bearer ${token}` },
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
+            },
+            reconnectDelay: 5000,
+            debug: () => {}, // silencioso
             onConnect: () => {
                 setIsConnected(true);
                 setError(null);
-                client.subscribe(`/app/game/${roomCode}`, (message: IMessage) => {
-                    setGameSession(JSON.parse(message.body) as GameSession);
-                });
+                try {
+                    if (subRef.current) {
+                        subRef.current.unsubscribe();
+                        subRef.current = null;
+                    }
+                    subRef.current = client.subscribe(`/topic/game/${roomCode}`, (msg: IMessage) => {
+                        try {
+                            const payload = JSON.parse(msg.body) as GameSession;
+                            setGameSession(payload);
+                        } catch (e) {
+                            console.error('Erro ao parsear mensagem STOMP:', e);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Erro ao subscrever tópico:', e);
+                }
             },
             onStompError: (frame) => {
-                console.error('Broker error:', frame.headers['message'], frame.body);
-                setError('Erro na comunicação com o servidor.');
+                console.error('STOMP broker error', frame.headers, frame.body);
+                setError(frame.headers?.message || 'Erro na comunicação STOMP');
             },
+            onWebSocketClose: () => setIsConnected(false),
             onDisconnect: () => setIsConnected(false),
         });
 
-        stompClientRef.current = client;
+        stompRef.current = client;
         client.activate();
 
         return () => {
-            if (client) client.deactivate();
+            try {
+                if (subRef.current) {
+                    subRef.current.unsubscribe();
+                    subRef.current = null;
+                }
+                if (stompRef.current) {
+                    stompRef.current.deactivate();
+                    stompRef.current = null;
+                }
+            } catch (e) {
+                console.warn('Erro ao desconectar STOMP:', e);
+            }
         };
     }, [roomCode, token]);
 
     const publish = useCallback((destination: string, body?: any) => {
-        if (stompClientRef.current && stompClientRef.current.connected) {
-            stompClientRef.current.publish({
-                destination,
-                body: body ? JSON.stringify(body) : undefined,
-            });
-        } else {
-            setError("Você não está conectado. Tente recarregar a página.");
+        const client = stompRef.current;
+        if (!client || !client.connected) {
+            setError('Não conectado ao servidor de jogo');
+            return;
         }
+        client.publish({
+            destination,
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+            headers: { 'content-type': 'application/json' },
+        });
     }, []);
 
-    const selectStory = (storyId: number) => publish(`/app/game/${roomCode}/select-story`, storyId);
-    const askQuestion = (questionText: string) => publish(`/app/game/${roomCode}/ask`, { questionText });
-    const answerQuestion = (moveId: number, answer: AnswerType) => publish(`/app/game/${roomCode}/answer`, { moveId, answer });
-    const endGame = () => publish(`/app/game/${roomCode}/end`);
+    const selectStory = useCallback((storyId: number) => {
+        if (!roomCode) return;
+        publish(`/app/game/${roomCode}/select-story`, { storyId });
+    }, [publish, roomCode]);
 
-    return { 
-        gameSession, 
-        isConnected, 
-        error, 
-        actions: { selectStory, askQuestion, answerQuestion, endGame }
+    const askQuestion = useCallback((questionText: string) => {
+        if (!roomCode) return;
+        publish(`/app/game/${roomCode}/ask`, { questionText });
+    }, [publish, roomCode]);
+
+    const answerQuestion = useCallback((moveId: number, answer: AnswerType) => {
+        if (!roomCode) return;
+        publish(`/app/game/${roomCode}/answer`, { moveId, answer });
+    }, [publish, roomCode]);
+
+    const endGame = useCallback(() => {
+        if (!roomCode) return;
+        publish(`/app/game/${roomCode}/end`);
+    }, [publish, roomCode]);
+
+    return {
+        gameSession,
+        isConnected,
+        error,
+        actions: { selectStory, askQuestion, answerQuestion, endGame },
     };
 };

@@ -1,31 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GameLobby } from '@/components/game-lobby';
 import { Navigation } from '@/components/navigation';
 import { useToast } from "@/components/ui/use-toast";
-import { Story, StoryResponseDTO } from '@/lib/types';
+import { Story } from '@/lib/types';
 import { StorySelectionModal } from '@/components/modal/story-select-modal';
+import { useGameWebSocket } from '../hooks/useGameWebSocket';
+import { useAuth } from '../context/AuthContext';
 
 axios.defaults.baseURL = 'http://localhost:8080';
 
 const LobbyPage: React.FC = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
+    const params = useParams<{ roomCode?: string }>();
+    const roomCode = params.roomCode;
+    const { token } = useAuth();
 
-    const [roomCode, setRoomCode] = useState<string>('');
+    const { gameSession, isConnected, error } = useGameWebSocket(roomCode);
+
+    const [inputRoomCode, setInputRoomCode] = useState<string>(roomCode || '');
     const [isCreating, setIsCreating] = useState(false);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalStories, setModalStories] = useState<Story[]>([]);
 
-    const [stories, setStories] = useState<StoryResponseDTO[]>([]);
+    const [stories, setStories] = useState<any[]>([]);
     const [selectedStoryId, setSelectedStoryId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const handleOpenCreateModal = async () => {
         try {
-            const response = await axios.get<Story[]>('/api/player/stories/random?count=3');
+            const response = await axios.get<Story[]>('/api/v1/player/stories/random?count=3');
             if (response.data.length === 0) {
                 toast({ variant: "destructive", title: "Nenhuma história encontrada." });
                 return;
@@ -40,7 +47,7 @@ const LobbyPage: React.FC = () => {
     const handleCreateGame = async (storyId: number) => {
         setIsCreating(true);
         try {
-            const response = await axios.post('/api/player/game-sessions', { storyId });
+            const response = await axios.post('/api/v1/player/game-sessions', { storyId });
             const newRoomCode = response.data.roomCode;
             toast({ title: "Sala criada com sucesso!", description: `Código da sala: ${newRoomCode}` });
             setIsModalOpen(false);
@@ -56,7 +63,7 @@ const LobbyPage: React.FC = () => {
     useEffect(() => {
         const fetchStories = async () => {
             try {
-                const response = await axios.get<StoryResponseDTO[]>('/api/player/stories');
+                const response = await axios.get<any[]>('/api/v1/player/stories');
                 setStories(response.data);
                 if (response.data.length > 0) {
                     setSelectedStoryId(response.data[0].id);
@@ -76,14 +83,14 @@ const LobbyPage: React.FC = () => {
     }, [toast]);
     
     const handleJoinGame = async () => {
-        const trimmedCode = roomCode.trim().toUpperCase();
+        const trimmedCode = inputRoomCode.trim().toUpperCase();
         if (!trimmedCode) {
             toast({ variant: "destructive", title: "Código da sala inválido!" });
             return;
         }
         
         try {
-            await axios.post(`/api/player/game-sessions/${trimmedCode}/join`);
+            await axios.post(`/api/v1/player/game-sessions/${trimmedCode}/join`);
             toast({ title: "Entrando na sala..." });
             navigate(`/game/${trimmedCode}`);
         } catch (error) {
@@ -100,12 +107,16 @@ const LobbyPage: React.FC = () => {
         return <div className="flex items-center justify-center min-h-screen text-white">Carregando Lobby...</div>;
     }
 
+    if (!token) {
+        return <div>Autenticação necessária. Faça login.</div>;
+    }
+
     return (
         <div className="min-h-screen bg-gradient-mystery">
             <Navigation />
             <GameLobby
-                roomCode={roomCode}
-                onRoomCodeChange={setRoomCode}
+                roomCode={inputRoomCode}
+                onRoomCodeChange={setInputRoomCode}
                 onOpenCreateModal={handleOpenCreateModal}
                 onJoinGame={handleJoinGame}
                 isCreating={isCreating}
@@ -117,6 +128,34 @@ const LobbyPage: React.FC = () => {
                 onCreateGame={handleCreateGame}
                 isCreating={isCreating}
             />
+
+            <div className="p-4">
+                <h1 className="text-2xl font-bold">Lobby: {roomCode}</h1>
+                <p>Conexão WS: {isConnected ? 'Conectado' : 'Desconectado'}</p>
+                {error && <p className="text-red-500">Erro: {error}</p>}
+
+                <section className="mt-4">
+                    <h2 className="font-semibold">Jogadores</h2>
+                    {gameSession?.players && gameSession.players.length > 0 ? (
+                        <ul>
+                            {gameSession.players.map((p: any) => (
+                                <li key={p.id}>
+                                    {p.name} {p.host ? '(host)' : ''}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div>Aguardando jogadores...</div>
+                    )}
+                </section>
+
+                <section className="mt-4">
+                    <h2 className="font-semibold">Informações da sala</h2>
+                    <pre className="bg-gray-100 p-2 rounded">
+                        {JSON.stringify({ status: gameSession?.status, code: roomCode }, null, 2)}
+                    </pre>
+                </section>
+            </div>
         </div>
     );
 };

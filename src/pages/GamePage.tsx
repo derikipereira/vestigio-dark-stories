@@ -1,13 +1,13 @@
-import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useGameWebSocket } from '../hooks/useGameWebSocket';
+import { useAuth } from '../context/AuthContext';
 import { Navigation } from '@/components/navigation';
 import { MasterView } from '@/components/master-view';
 import { DetectiveView } from '@/components/detective-view';
 import { GameSession, Story } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useGameWebSocket } from '@/hooks/useGameWebSocket';
 
 const StorySelectionView: React.FC<{
     stories: Story[],
@@ -30,67 +30,164 @@ const StorySelectionView: React.FC<{
 );
 
 const GamePage: React.FC = () => {
-    const { roomCode } = useParams<{ roomCode: string }>();
-    const { user, token } = useAuth();
-    
-    // 👇 Desestruturando 'actions' em vez de 'sendMessage'
-    const { gameSession, isConnected, error, actions } = useGameWebSocket(roomCode, token);
+  const params = useParams<{ roomCode?: string }>();
+  const roomCode = params.roomCode;
+  const { token } = useAuth();
 
-    if (error) return <div className="text-red-500 p-4 text-center">{error}</div>;
-    if (!isConnected || !gameSession) {
-        return <div className="flex items-center justify-center min-h-screen text-white">Conectando e buscando dados da sala {roomCode}...</div>;
-    }
-    if (!user) return <Navigate to="/login" />;
+  const { gameSession, isConnected, error, actions } = useGameWebSocket(roomCode);
 
-    const isMaster = user.id === gameSession.master.id;
+  const [questionText, setQuestionText] = useState('');
+  const [selectedStoryId, setSelectedStoryId] = useState<number | null>(null);
 
-    const renderGameContent = () => {
-        switch (gameSession.status) {
-            case 'WAITING_FOR_STORY_SELECTION':
-                return isMaster ? (
-                    <StorySelectionView 
-                        stories={gameSession.storyOptions || []}
-                        // 👇 Chamando a função correta do objeto 'actions'
-                        onSelect={actions.selectStory} 
-                    />
-                ) : (
-                    <div className="text-center text-white p-8">Aguardando o Mestre escolher a história...</div>
-                );
+  if (!token) {
+    return <div>Autenticação necessária. Faça login.</div>;
+  }
 
-            case 'IN_PROGRESS':
-                if (!gameSession.story) return <div>Erro: Jogo em progresso sem história.</div>;
-                return isMaster ? (
-                    <MasterView
-                        mystery={gameSession.story.enigmaticSituation}
-                        solution={gameSession.story.fullSolution}
-                        moves={gameSession.moves}
-                        players={gameSession.players}
-                        // 👇 Chamando a função correta do objeto 'actions'
-                        onAnswer={actions.answerQuestion}
-                    />
-                ) : (
-                    <DetectiveView
-                        mystery={gameSession.story.enigmaticSituation}
-                        moves={gameSession.moves}
-                        // 👇 Chamando a função correta do objeto 'actions'
-                        onSubmitQuestion={actions.askQuestion}
-                    />
-                );
+  const isMaster = token === gameSession?.master?.id;
 
-            case 'COMPLETED':
-                return <div className="text-center text-white p-8"><h1>Fim de Jogo!</h1><p>Solução: {gameSession.story?.fullSolution}</p></div>;
+  const renderGameContent = () => {
+      switch (gameSession.status) {
+          case 'WAITING_FOR_STORY_SELECTION':
+              return isMaster ? (
+                  <StorySelectionView 
+                      stories={gameSession.storyOptions || []}
+                      onSelect={actions.selectStory} 
+                  />
+              ) : (
+                  <div className="text-center text-white p-8">Aguardando o Mestre escolher a história...</div>
+              );
 
-            default:
-                return <div className="text-center text-white p-8">Aguardando jogadores... (Status: {gameSession.status})</div>;
-        }
-    };
+          case 'IN_PROGRESS':
+              if (!gameSession.story) return <div>Erro: Jogo em progresso sem história.</div>;
+              return isMaster ? (
+                  <MasterView
+                      mystery={gameSession.story.enigmaticSituation}
+                      solution={gameSession.story.fullSolution}
+                      moves={gameSession.moves}
+                      players={gameSession.players}
+                      onAnswer={actions.answerQuestion}
+                  />
+              ) : (
+                  <DetectiveView
+                      mystery={gameSession.story.enigmaticSituation}
+                      moves={gameSession.moves}
+                      onSubmitQuestion={actions.askQuestion}
+                  />
+              );
 
-    return (
-        <div className="min-h-screen bg-gradient-mystery">
-            <Navigation />
-            <main>{renderGameContent()}</main>
+          case 'COMPLETED':
+              return <div className="text-center text-white p-8"><h1>Fim de Jogo!</h1><p>Solução: {gameSession.story?.fullSolution}</p></div>;
+
+          default:
+              return <div className="text-center text-white p-8">Aguardando jogadores... (Status: {gameSession.status})</div>;
+      }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-mystery">
+      <Navigation />
+      <main>
+        <div className="p-4">
+          <h1 className="text-2xl font-bold">Sala: {roomCode}</h1>
+          <p>Conexão WS: {isConnected ? 'Conectado' : 'Desconectado'}</p>
+          {error && <p className="text-red-500">Erro: {error}</p>}
+
+          <section className="mt-4">
+            <h2 className="font-semibold">Estado do jogo</h2>
+            <pre className="bg-gray-100 p-2 rounded">
+              {JSON.stringify(
+                {
+                  status: gameSession?.status,
+                  players: gameSession?.players?.map((p: any) => p.name) ?? [],
+                },
+                null,
+                2
+              )}
+            </pre>
+          </section>
+
+          <section className="mt-4">
+            <h2 className="font-semibold">Selecionar história</h2>
+            {gameSession?.stories && gameSession.stories.length > 0 ? (
+              <div className="space-y-2">
+                {gameSession.stories.map((s: any) => (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <strong>{s.title}</strong>
+                      <div className="text-sm text-gray-600">{s.description}</div>
+                    </div>
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        setSelectedStoryId(s.id);
+                        actions.selectStory(s.id);
+                      }}
+                    >
+                      Selecionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>Nenhuma história disponível</div>
+            )}
+          </section>
+
+          <section className="mt-4">
+            <h2 className="font-semibold">Perguntar</h2>
+            <div className="flex gap-2">
+              <input
+                className="input"
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                placeholder="Digite sua pergunta..."
+              />
+              <button
+                className="btn"
+                onClick={() => {
+                  if (!questionText) return;
+                  actions.askQuestion(questionText);
+                  setQuestionText('');
+                }}
+              >
+                Enviar
+              </button>
+            </div>
+          </section>
+
+          <section className="mt-4">
+            <h2 className="font-semibold">Movimentos / Responder</h2>
+            {gameSession?.moves && gameSession.moves.length > 0 ? (
+              <div className="space-y-2">
+                {gameSession.moves.map((m: any) => (
+                  <div key={m.id} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="text-sm">{m.questionText ?? m.text}</div>
+                      <div className="text-xs text-gray-500">autor: {m.player?.name}</div>
+                    </div>
+                    <div className="flex gap-1">
+                      <button className="btn" onClick={() => actions.answerQuestion(m.id, 'SIM')}>SIM</button>
+                      <button className="btn" onClick={() => actions.answerQuestion(m.id, 'NAO')}>NÃO</button>
+                      <button className="btn" onClick={() => actions.answerQuestion(m.id, 'IRRELEVANTE')}>IRRELEVANTE</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>Nenhum movimento registrado</div>
+            )}
+          </section>
+
+          <section className="mt-6">
+            <button className="btn btn-danger" onClick={() => actions.endGame()}>
+              Encerrar jogo
+            </button>
+          </section>
         </div>
-    );
+        {renderGameContent()}
+      </main>
+    </div>
+  );
 };
 
 export default GamePage;
