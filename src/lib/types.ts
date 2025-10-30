@@ -1,6 +1,14 @@
-export type Difficulty = 'FACIL' | 'MEDIO' | 'DIFICIL';
+export type Difficulty = 'FACIL' | 'MEDIO' | 'DIFICIL' | 'EASY' | 'MEDIUM' | 'HARD';
 
-export type Genre = 'CRIME' | 'SOBRENATURAL' | 'COTIDIANO' | 'BIZARRO' | 'FUTURISTA';
+export type Genre =
+  | 'CRIME'
+  | 'SOBRENATURAL'
+  | 'COTIDIANO'
+  | 'BIZARRO'
+  | 'FUTURISTA'
+  | 'COMEDY'
+  | 'DRAMA'
+  | 'HORROR';
 
 export type StoryStatus = 'PENDENTE' | 'APROVADA' | 'REJEITADA';
 
@@ -12,15 +20,10 @@ export type GameStatus =
 
 export type AnswerType = 'SIM' | 'NAO' | 'IRRELEVANTE';
 
-export interface User {
-    id: number;
-    name: string;
-    email?: string;
-}
-
 export interface Player {
     id: number;
-    name: string;
+    name?: string;
+    username?: string;
     host?: boolean;
 }
 
@@ -28,22 +31,34 @@ export interface Story {
     id: number;
     title: string;
     description?: string;
+    enigmaticSituation?: string;
+    fullSolution?: string;
+    genre?: Genre | string;
+    difficulty?: Difficulty | string;
+    creatorName?: string;
     status?: StoryStatus;
 }
 
 export interface Move {
     id: number;
+    question?: string;
     text?: string;
     questionText?: string;
     player?: Player;
-    answer?: AnswerType;
+    authorName?: string;
+    answer?: AnswerType | null;
+    createdAt?: string;
 }
 
 export interface GameSession {
     id: number;
-    code: string;
+    roomCode?: string;
+    code?: string;
     status: GameStatus;
+    story?: Story;
+    storyOptions?: Story[];
+    master?: Player;
     players?: Player[];
-    stories?: Story[];
     moves?: Move[];
+    createdAt?: string;
 }
