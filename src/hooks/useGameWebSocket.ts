@@ -137,6 +137,26 @@ export const useGameWebSocket = (roomCode?: string) => {
     return publish(`/app/game/${roomCode}/end`);
   }, [publish, roomCode]);
 
+  // Método genérico para enviar ações (TRIVIA, HANGMAN, etc)
+  const sendAction = useCallback(async (actionType: string, payload: any): Promise<boolean> => {
+    if (!roomCode || !token) {
+      console.error('[sendAction] missing roomCode or token');
+      return false;
+    }
+    try {
+      await axios.post(
+        `/api/v1/player/game-sessions/${roomCode}/action`,
+        { actionType, payload },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return true;
+    } catch (e) {
+      console.error('[sendAction] erro ao enviar ação', e);
+      setError('Erro ao enviar ação');
+      return false;
+    }
+  }, [roomCode, token]);
+
   // REST join
   const joinRoom = useCallback(async () => {
     if (!roomCode) throw new Error('roomCode obrigatório');
@@ -154,6 +174,6 @@ export const useGameWebSocket = (roomCode?: string) => {
     gameSession,
     isConnected,
     error,
-    actions: { selectStory, askQuestion, answerQuestion, pickWinner, endGame, joinRoom }
+    actions: { selectStory, askQuestion, answerQuestion, pickWinner, endGame, sendAction, joinRoom }
   };
 };

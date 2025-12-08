@@ -4,10 +4,11 @@ import axios from 'axios';
 import { GameLobby } from '@/components/game-lobby';
 import { Navigation } from '@/components/navigation';
 import { useToast } from "@/components/ui/use-toast";
-import { Story } from '@/lib/types';
+import { GameType, Story, GameConfigParams } from '@/lib/types';
 import { StorySelectionModal } from '@/components/modal/story-select-modal';
 import { useGameWebSocket } from '../hooks/useGameWebSocket';
 import { useAuth } from '../context/AuthContext';
+import { useGame } from '../hooks/useGame';
 
 axios.defaults.baseURL = 'http://localhost:8080';
 
@@ -17,48 +18,112 @@ const LobbyPage: React.FC = () => {
     const params = useParams<{ roomCode?: string }>();
     const roomCode = params.roomCode;
     const { token } = useAuth();
+    const { setGameType, setCurrentGame } = useGame();
 
     const { gameSession, isConnected, error } = useGameWebSocket(roomCode);
 
     const [inputRoomCode, setInputRoomCode] = useState<string>(roomCode || '');
     const [isCreating, setIsCreating] = useState(false);
+    const [selectedGameType, setSelectedGameType] = useState<GameType | null>(null);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalStories, setModalStories] = useState<Story[]>([]);
 
     const [stories, setStories] = useState<any[]>([]);
     const [selectedStoryId, setSelectedStoryId] = useState<number | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleGameTypeSelect = (type: GameType) => {
+        setSelectedGameType(type);
+        setGameType(type);
+    };
 
     const handleOpenCreateModal = async () => {
+        if (!selectedGameType) {
+            toast({ variant: "destructive", title: "Selecione um tipo de jogo" });
+            return;
+        }
+
         try {
-            const response = await axios.get<Story[]>('/api/v1/player/stories/random?count=3');
-            if (response.data.length === 0) {
-                toast({ variant: "destructive", title: "Nenhuma história encontrada." });
-                return;
+            if (selectedGameType === 'VESTIGIO') {
+                const response = await axios.get<Story[]>('/api/v1/player/stories/random?count=3');
+                if (response.data.length === 0) {
+                    toast({ variant: "destructive", title: "Nenhuma história encontrada." });
+                    return;
+                }
+                setModalStories(response.data);
+                setIsModalOpen(true);
+            } else {
+                // Para TRIVIA e HANGMAN, criar diretamente sem modal de seleção
+                await handleCreateGameDirect();
             }
-            setModalStories(response.data);
-            setIsModalOpen(true);
         } catch (error) {
-            toast({ variant: "destructive", title: "Erro ao buscar histórias aleatórias." });
+            toast({ variant: "destructive", title: "Erro ao preparar o jogo." });
         }
     };
 
-    const handleCreateGame = async (storyId: number) => {
+    const handleCreateGameDirect = async () => {
+        if (!selectedGameType) return;
+        
         setIsCreating(true);
         try {
-            const response = await axios.post('/api/v1/player/game-sessions', { storyId });
+            let configParams: any = {};
+            
+            if (selectedGameType === 'TRIVIA') {
+                configParams = {
+                    questionCount: 10,
+                    category: 'GENERAL',
+                    difficulty: 'MEDIUM'
+                };
+            } else if (selectedGameType === 'HANGMAN') {
+                configParams = {
+                    difficulty: 'MEDIUM',
+                    maxAttempts: 6
+                };
+            }
+
+            const response = await axios.post('/api/v1/player/game-sessions', {
+                gameType: selectedGameType,
+                configParams
+            });
+            
             const newRoomCode = response.data.roomCode;
+            setCurrentGame(response.data);
+            setGameType(selectedGameType);
             toast({ title: "Sala criada com sucesso!", description: `Código da sala: ${newRoomCode}` });
             setIsModalOpen(false);
             navigate(`/game/${newRoomCode}`);
         } catch (error) {
+            console.error('Erro ao criar jogo:', error);
             toast({ variant: "destructive", title: "Erro ao criar a partida." });
         } finally {
             setIsCreating(false);
         }
     };
 
+    const handleCreateGame = async (storyId: number) => {
+        setIsCreating(true);
+        try {
+            const response = await axios.post('/api/v1/player/game-sessions', { 
+                gameType: 'VESTIGIO',
+                configParams: {
+                    storyId: storyId
+                }
+            });
+            
+            const newRoomCode = response.data.roomCode;
+            setCurrentGame(response.data);
+            setGameType('VESTIGIO');
+            toast({ title: "Sala criada com sucesso!", description: `Código da sala: ${newRoomCode}` });
+            setIsModalOpen(false);
+            navigate(`/game/${newRoomCode}`);
+        } catch (error) {
+            console.error('Erro ao criar jogo:', error);
+            toast({ variant: "destructive", title: "Erro ao criar a partida." });
+        } finally {
+            setIsCreating(false);
+        }
+    };
 
     useEffect(() => {
         const fetchStories = async () => {
@@ -70,17 +135,10 @@ const LobbyPage: React.FC = () => {
                 }
             } catch (error) {
                 console.error("Erro ao buscar histórias:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Erro ao carregar histórias",
-                    description: "Não foi possível buscar os mistérios disponíveis.",
-                });
-            } finally {
-                setIsLoading(false);
             }
         };
         fetchStories();
-    }, [toast]);
+    }, []);
     
     const handleJoinGame = async () => {
         const trimmedCode = inputRoomCode.trim().toUpperCase();
@@ -90,7 +148,9 @@ const LobbyPage: React.FC = () => {
         }
         
         try {
-            await axios.post(`/api/v1/player/game-sessions/${trimmedCode}/join`);
+            const response = await axios.post(`/api/v1/player/game-sessions/${trimmedCode}/join`);
+            setCurrentGame(response.data);
+            setGameType(response.data.gameType || 'VESTIGIO');
             toast({ title: "Entrando na sala..." });
             navigate(`/game/${trimmedCode}`);
         } catch (error) {
@@ -103,10 +163,6 @@ const LobbyPage: React.FC = () => {
         }
     };
 
-    if (isLoading) {
-        return <div className="flex items-center justify-center min-h-screen text-white">Carregando Lobby...</div>;
-    }
-
     if (!token) {
         return <div>Autenticação necessária. Faça login.</div>;
     }
@@ -116,6 +172,8 @@ const LobbyPage: React.FC = () => {
             <Navigation />
             <GameLobby
                 roomCode={inputRoomCode}
+                selectedGameType={selectedGameType}
+                onGameTypeSelect={handleGameTypeSelect}
                 onRoomCodeChange={setInputRoomCode}
                 onOpenCreateModal={handleOpenCreateModal}
                 onJoinGame={handleJoinGame}
@@ -128,34 +186,6 @@ const LobbyPage: React.FC = () => {
                 onCreateGame={handleCreateGame}
                 isCreating={isCreating}
             />
-
-            <div className="p-4">
-                <h1 className="text-2xl font-bold">Lobby: {roomCode}</h1>
-                <p>Conexão WS: {isConnected ? 'Conectado' : 'Desconectado'}</p>
-                {error && <p className="text-red-500">Erro: {error}</p>}
-
-                <section className="mt-4">
-                    <h2 className="font-semibold">Jogadores</h2>
-                    {gameSession?.players && gameSession.players.length > 0 ? (
-                        <ul>
-                            {gameSession.players.map((p: any) => (
-                                <li key={p.id}>
-                                    {p.name} {p.host ? '(host)' : ''}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <div>Aguardando jogadores...</div>
-                    )}
-                </section>
-
-                <section className="mt-4">
-                    <h2 className="font-semibold">Informações da sala</h2>
-                    <pre className="bg-gray-100 p-2 rounded">
-                        {JSON.stringify({ status: gameSession?.status, code: roomCode }, null, 2)}
-                    </pre>
-                </section>
-            </div>
         </div>
     );
 };
