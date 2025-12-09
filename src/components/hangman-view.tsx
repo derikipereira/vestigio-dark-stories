@@ -76,9 +76,9 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
   const [letterInput, setLetterInput] = useState('');
   const [revealedLetters, setRevealedLetters] = useState<Set<string>>(new Set());
 
-  const hangmanState = session.content?.hangmanState;
+  const content = session.content as any;
   
-  if (!hangmanState) {
+  if (!content) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -90,15 +90,22 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
     );
   }
 
-  const wrongGuesses = hangmanState.wrongGuessCount || 0;
-  const maxWrongs = hangmanState.maxWrongGuesses || 6;
+  const maskedWord = content.maskedWord || '';
+  const guessedLettersString = content.guessedLetters || '';
+  const guessedLetters = guessedLettersString.split('').filter((l: string) => l.trim());
+  const remainingAttempts = content.remainingAttempts ?? 6;
+  const maxAttempts = content.maxAttempts ?? 6;
+  const isGameOver = content.isGameOver ?? false;
+  const isGameWon = content.isVictory ?? false;
+  const wrongGuesses = maxAttempts - remainingAttempts;
+  const maxWrongs = maxAttempts;
   const hangmanStage = HANGMAN_STAGES[Math.min(wrongGuesses, HANGMAN_STAGES.length - 1)];
-  const isGameOver = hangmanState.isGameOver;
-  const isGameWon = hangmanState.isGameWon;
-  const revealedWord = hangmanState.revealedLetters?.join('') || '';
+  const revealedWord = maskedWord;
+  const difficulty = content.difficulty;
+  const hint = content.hint;
+  const word = content.word;
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const guessedLetters = hangmanState.guessedLetters || [];
 
   const handleGuess = (letter: string) => {
     if (!guessedLetters.includes(letter) && !isGameOver) {
@@ -116,8 +123,8 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
     }
   };
 
-  const getDifficultyColor = (difficulty?: string) => {
-    switch (difficulty?.toUpperCase()) {
+  const getDifficultyColor = (diff?: string) => {
+    switch (diff?.toUpperCase()) {
       case 'EASY':
       case 'FACIL':
         return 'text-green-500';
@@ -153,8 +160,8 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
         <Card className="bg-gradient-card border-border/50">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Dificuldade</p>
-            <p className={`text-2xl font-bold ${getDifficultyColor(hangmanState.difficulty)}`}>
-              {hangmanState.difficulty || 'NORMAL'}
+            <p className={`text-2xl font-bold ${getDifficultyColor(difficulty)}`}>
+              {difficulty || 'NORMAL'}
             </p>
           </CardContent>
         </Card>
@@ -173,13 +180,13 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
       <Card className="bg-gradient-card border-border/50 mb-6">
         <CardHeader>
           <CardTitle className="text-center text-2xl tracking-widest font-mono">
-            {revealedWord || hangmanState.word?.split('').map(() => '_').join('') || '_ _ _'}
+            {revealedWord || '_ _ _'}
           </CardTitle>
         </CardHeader>
-        {hangmanState.hint && (
+        {hint && (
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-mystery-gold">Dica:</span> {hangmanState.hint}
+              <span className="font-semibold text-mystery-gold">Dica:</span> {hint}
             </p>
           </CardContent>
         )}
@@ -195,8 +202,8 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
             {guessedLetters.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nenhuma letra adivinhada ainda</p>
             ) : (
-              guessedLetters.map((letter) => {
-                const isCorrect = hangmanState.word && hangmanState.word.includes(letter);
+              guessedLetters.map((letter: string) => {
+                const isCorrect = word && word.includes(letter);
                 return (
                   <Badge key={letter} variant={isCorrect ? 'default' : 'destructive'}>
                     {letter}
@@ -259,7 +266,7 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
                 onClick={onRevealHint}
                 variant="secondary"
                 className="w-full"
-                disabled={!hangmanState.hint || isLoading}
+                disabled={!hint || isLoading}
               >
                 💡 Revelador de Dica
               </Button>
@@ -273,7 +280,7 @@ export function HangmanView({ session, onGuessLetter, onRevealHint, onFinish, is
               {isGameWon ? '🎉 Você venceu!' : '💀 Game Over!'}
             </p>
             <p className="text-center text-white mb-4">
-              A palavra era: <span className="font-bold text-mystery-gold">{hangmanState.word}</span>
+              A palavra era: <span className="font-bold text-mystery-gold">{word || 'N/A'}</span>
             </p>
             <Button
               onClick={onFinish}

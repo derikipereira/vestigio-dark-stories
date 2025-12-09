@@ -90,16 +90,18 @@ export const useGameWebSocket = (roomCode?: string) => {
     return true;
   }, []);
 
-  const selectStory = useCallback((storyId: number) => {
-    if (!roomCode) return false;
-    return publish(`/app/game/${roomCode}/select-story`, String(storyId), { 'content-type': 'text/plain' });
-  }, [publish, roomCode]);
-
   const askQuestion = useCallback(async (questionText: string): Promise<boolean> => {
     if (!roomCode) return false;
-    const dto = { questionText };
+    
+    const actionRequest = {
+      actionType: 'ASK_QUESTION',
+      payload: {
+        questionText: questionText
+      }
+    };
+
     try {
-      const ok = publish(`/app/game/${roomCode}/ask`, JSON.stringify(dto));
+      const ok = publish(`/app/game/${roomCode}/action`, JSON.stringify(actionRequest));
       return Boolean(ok);
     } catch (e) {
       console.error('Erro ao enviar pergunta via STOMP', e);
@@ -113,28 +115,18 @@ export const useGameWebSocket = (roomCode?: string) => {
       console.debug('[answerQuestion] missing roomCode', { moveId, answer });
       return false;
     }
-    const dto = { moveId, answer };
-    const payload = JSON.stringify(dto);
-    console.debug('[answerQuestion] payload', payload);
-    const ok = publish(`/app/game/${roomCode}/answer`, payload);
+    
+    const actionRequest = {
+      actionType: 'ANSWER_QUESTION',
+      payload: {
+        moveId: moveId,
+        answer: answer
+      }
+    };
+    
+    const payload = JSON.stringify(actionRequest);
+    const ok = publish(`/app/game/${roomCode}/action`, payload);
     return Boolean(ok);
-  }, [publish, roomCode]);
-
-  const pickWinner = useCallback(async (winnerId: number): Promise<boolean> => {
-    if (!roomCode) {
-      console.debug('[pickWinner] missing roomCode', { winnerId });
-      return false;
-    }
-    const dto = { winnerId };
-    const payload = JSON.stringify(dto);
-    console.debug('[pickWinner] payload', payload);
-    const ok = publish(`/app/game/${roomCode}/pick-winner`, payload);
-    return Boolean(ok);
-  }, [publish, roomCode]);
-
-  const endGame = useCallback(() => {
-    if (!roomCode) return false;
-    return publish(`/app/game/${roomCode}/end`);
   }, [publish, roomCode]);
 
   // Método genérico para enviar ações (TRIVIA, HANGMAN, etc)
@@ -174,6 +166,6 @@ export const useGameWebSocket = (roomCode?: string) => {
     gameSession,
     isConnected,
     error,
-    actions: { selectStory, askQuestion, answerQuestion, pickWinner, endGame, sendAction, joinRoom }
+    actions: { askQuestion, answerQuestion, sendAction, joinRoom }
   };
 };

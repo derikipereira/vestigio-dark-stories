@@ -44,15 +44,45 @@ const Index = () => {
       
       {currentView === "game" && (
         <DetectiveView
-          mystery={sampleMystery}
-          onSubmitQuestion={handleSubmitQuestion}
+          session={{
+            id: 1,
+            roomCode: "DEMO",
+            gameType: "VESTIGIO",
+            status: "IN_PROGRESS",
+            story: {
+              id: 1,
+              title: "Mistério de Demo",
+              enigmaticSituation: sampleMystery,
+              fullSolution: sampleSolution,
+            },
+            players: [],
+            moves: [],
+          }}
+          onAskQuestion={(question) => {
+            console.log("Pergunta submetida:", question);
+          }}
         />
       )}
       
       {currentView === "master" && (
         <MasterView
-          mystery={sampleMystery}
-          solution={sampleSolution}
+          session={{
+            id: 1,
+            roomCode: "DEMO",
+            gameType: "VESTIGIO",
+            status: "IN_PROGRESS",
+            story: {
+              id: 1,
+              title: "Mistério de Demo",
+              enigmaticSituation: sampleMystery,
+              fullSolution: sampleSolution,
+            },
+            players: [],
+            moves: [],
+          }}
+          onAnswer={(moveId, answer) => {
+            console.log(`Resposta ${answer} para pergunta ${moveId}`);
+          }}
         />
       )}
     </div>

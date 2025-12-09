@@ -3,19 +3,22 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Users, MessageSquare } from "lucide-react";
-import { Move, Player, AnswerType } from "@/lib/types"; // Importe os tipos reais
+import { GameSession, Move, AnswerType } from "@/lib/types";
 
-// A interface de props agora reflete os dados e ações reais
 interface MasterViewProps {
-  mystery: string;
-  solution: string;
-  moves: Move[];
-  players: Player[];
+  session: GameSession;
   onAnswer: (moveId: number, answer: AnswerType) => void;
+  onFinish?: () => void;
+  isLoading?: boolean;
+  isConnected?: boolean;
 }
 
-export function MasterView({ mystery, solution, moves, players, onAnswer }: MasterViewProps) {
-  // REMOVEMOS o 'useState' com 'sampleQuestions'. A lógica agora vem das props.
+export function MasterView({ session, onAnswer, onFinish, isLoading, isConnected }: MasterViewProps) {
+  const mystery = session?.story?.enigmaticSituation || session?.content?.story?.enigmaticSituation || "Carregando mistério...";
+  const solution = session?.story?.fullSolution || session?.content?.story?.fullSolution || "Carregando solução...";
+  const moves = (session?.moves as Move[]) || [];
+  const players = session?.players || [];
+  
   const unansweredQuestions = moves.filter(move => !move.answer);
   const answeredQuestions = moves.filter(move => !!move.answer);
 
@@ -24,7 +27,26 @@ export function MasterView({ mystery, solution, moves, players, onAnswer }: Mast
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Coluna da Esquerda (Mistério, Solução, Jogadores) */}
         <div className="lg:col-span-1 space-y-4">
-            {/* ... componentes MysteryCard para 'mystery' e 'solution' ... */}
+            <Card className="bg-gradient-card border-mystery-red/30">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-sm text-mystery-red">🔍 Mistério</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm leading-relaxed">{mystery}</p>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-card border-mystery-gold/30">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-sm text-mystery-gold">💡 Solução</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-32">
+                        <p className="text-sm leading-relaxed text-muted-foreground">{solution}</p>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
             <Card className="bg-gradient-card border-border/50">
                 <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-sm"><Users className="h-4 w-4" /> Detetives Ativos</CardTitle>
@@ -57,8 +79,10 @@ export function MasterView({ mystery, solution, moves, players, onAnswer }: Mast
                 <div className="space-y-3">
                   {unansweredQuestions.map((move) => (
                     <div key={move.id} className="p-3 rounded-lg bg-background/50 border border-border/30">
-                      <p className="text-sm text-foreground mb-1">{move.question}</p>
-                      <div className="text-xs text-muted-foreground mb-3">por {move.author.username}</div>
+                      <p className="text-sm text-foreground mb-1">{move.question || move.questionText || move.text}</p>
+                      <div className="text-xs text-muted-foreground mb-3">
+                        por {move.player?.username || move.authorName || "Jogador"}
+                      </div>
                       <div className="flex gap-2 mt-2">
                         <Button size="sm" variant="outline" onClick={() => onAnswer(move.id, 'SIM')}>SIM</Button>
                         <Button size="sm" variant="outline" onClick={() => onAnswer(move.id, 'NAO')}>NÃO</Button>
@@ -73,7 +97,39 @@ export function MasterView({ mystery, solution, moves, players, onAnswer }: Mast
 
           {/* Histórico de Perguntas */}
           <Card className="bg-gradient-card border-border/50">
-              {/* ... renderize as 'answeredQuestions' aqui ... */}
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  📜 Histórico de Perguntas
+                  <Badge variant="secondary" className="ml-auto">{answeredQuestions.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-96">
+                  <div className="space-y-3">
+                    {answeredQuestions.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Nenhuma pergunta respondida ainda
+                      </p>
+                    ) : (
+                      answeredQuestions.map((move) => (
+                        <div key={move.id} className="p-3 rounded-lg bg-background/50 border border-border/30">
+                          <p className="text-sm text-foreground mb-1">{move.question || move.questionText || move.text}</p>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            por {move.player?.username || move.authorName || "Jogador"}
+                          </div>
+                          <div className={`text-xs font-semibold ${
+                            move.answer === 'SIM' ? 'text-green-500' :
+                            move.answer === 'NAO' ? 'text-red-500' :
+                            'text-yellow-500'
+                          }`}>
+                            Resposta: {move.answer}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
           </Card>
         </div>
       </div>
